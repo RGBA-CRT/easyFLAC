@@ -28,7 +28,7 @@ int _tmain(int argc, _TCHAR* argv[]){
 	fprintf(stderr, "sample bytes   : %ld\n", handle->sampleSize);
 
 	BYTE buffer[TEST_SAMPLE_SIZE*6]={0xFF};	//6は24bit * 2chの意
-  FILE *fout;
+ 	FILE *fout;
 	fopen_s(&fout,"out.rwav","wb");
 
 	DWORD samples;
@@ -37,7 +37,7 @@ int _tmain(int argc, _TCHAR* argv[]){
 		printf(".");
 		fwrite(buffer,samples,handle->sampleSize,fout);
 		if(handle->ok==FLAC__STREAM_DECODER_END_OF_STREAM)  //終了判定はこのようにする
-      break;
+  		    break;
 	}	
 	
 	FLAC_close(handle);
