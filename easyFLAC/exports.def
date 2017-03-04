@@ -1,0 +1,14 @@
+EXPORTS
+	FLAC_openFile
+	FLAC_close
+	FLAC_render
+
+	FLAC_seek
+	
+	FLAC_getTags
+	FLAC_deleteTags
+	FLAC_getVorbisCommentFromTags
+	FLAC_makeInfomationString
+	FLAC_freeInfomationString
+	FLAC__metadata_object_vorbiscomment_find_entry_from_std
+	FLAC_getTagVal
