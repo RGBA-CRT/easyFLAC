@@ -1,0 +1,101 @@
+'easyFLAC EXAMPLE for ActiveBasic4
+
+#console
+#include<RGBALib.sbp>
+
+Declare Function FLAC_openFile Lib "easyFLAC"  (pszPath As BytePtr) As EASY_FLAC_HANDLE
+Declare Sub		 FLAC_close	   Lib "easyFLAC"  (handle As EASY_FLAC_HANDLE)
+Declare Function FLAC_render   Lib "easyFLAC"  (handle As EASY_FLAC_HANDLE,buf AS BytePtr,samples As DWord) As DWORD
+
+Declare Function FLAC_getTags   Lib "easyFLAC"  (pszPath As BytePtr) As HANDLE
+Declare Function FLAC_getVorbisCommentFromTags   Lib "easyFLAC"  (tags AS HANDLE) As *FLAC__StreamMetadata_VorbisComment
+Declare Function FLAC_tag_find_entry Lib "easyFLAC" Alias "FLAC__metadata_object_vorbiscomment_find_entry_from_std" (handle As EASY_FLAC_HANDLE,offset AS DWORD,fieldName As BytePtr) As Long
+Declare Function FLAC_getTagVal   Lib "easyFLAC"  (tags As HANDLE,fieldName AS BytePtr) As BytePtr
+Declare Function FLAC_makeInfomationString Lib "easyFLAC"  (handle As EASY_FLAC_HANDLE,tags AS HANDLE) As BytePtr
+Declare Sub 	 FLAC_deleteTags Lib "easyFLAC"  (tags AS HANDLE) 
+Declare Sub		 FLAC_freeInfomationString Lib "easyFLAC"  (infoText AS BytePtr)
+
+Type EASY_FLAC
+	filePath 	AS BytePtr
+	sampleRate 	AS DWord
+	channels 	AS DWord
+	bps 		AS DWord
+	state 		AS FLAC__StreamDecoderState
+	sampleSize 	AS DWord
+	totalSamples AS QWord
+	dummy[3] AS DWord
+End Type
+typedef EASY_FLAC_HANDLE = *EASY_FLAC 
+
+Type FLAC__StreamMetadata_VorbisComment
+	vendor_string AS FLAC__StreamMetadata_VorbisComment_Entry
+	num_comments AS DWORD
+	comments AS *FLAC__StreamMetadata_VorbisComment_Entry
+End Type
+
+Type FLAC__StreamMetadata_VorbisComment_Entry
+	length AS DWord
+	entry AS BytePtr
+End Type
+
+Enum FLAC__StreamDecoderState
+	FLAC__STREAM_DECODER_SEARCH_FOR_METADATA = 0
+	FLAC__STREAM_DECODER_READ_METADATA
+	FLAC__STREAM_DECODER_SEARCH_FOR_FRAME_SYNC
+	FLAC__STREAM_DECODER_READ_FRAME
+	FLAC__STREAM_DECODER_END_OF_STREAM
+	FLAC__STREAM_DECODER_OGG_ERROR
+	FLAC__STREAM_DECODER_SEEK_ERROR
+	FLAC__STREAM_DECODER_ABORTED
+	FLAC__STREAM_DECODER_MEMORY_ALLOCATION_ERROR
+	FLAC__STREAM_DECODER_UNINITIALIZED
+End Enum
+
+printf(ex"EASY_FLAC_PROTOTYPE - PROGRAMMED BY RGBA_CRT v2017.2.25\n")
+Const FILE="ZIELONY3_1.flac"
+
+'METADATA
+Dim tags AS HANDLE
+tags=FLAC_getTags(FILE)
+
+Dim handle AS EASY_FLAC_HANDLE
+handle=FLAC_openFile(FILE)
+if handle=NULL Then	Print "open error":End
+
+printf(ex"%dHz , %dbit , %dch\n------- INFO -----------\n%s\n",handle->sampleRate,handle->bps,handle->channels,_
+	UTF8ToSJIS(FLAC_makeInfomationString(handle,tags)))
+
+printf(ex"title = %s\n\n",FLAC_getTagVal(tags,"TITLE"))
+FLAC_freeInfomationString(FLAC_makeInfomationString(handle,tags))
+
+'DECODE
+Const SAMPLE_SIZE = 40000
+Dim out AS File
+Dim samples AS DWord,buf AS BytePtr
+buf=calloc(SAMPLE_SIZE*handle->sampleSize)
+
+Input ">",samples
+
+out.openFile("out.rwav",GENERIC_WRITE)
+Do
+	samples=FLAC_render(handle,buf,SAMPLE_SIZE)
+	Print ".";
+	out.write(buf,samples*handle->sampleSize)
+	if handle->state = FLAC__STREAM_DECODER_END_OF_STREAM Then ExitDo
+Loop
+out.close()
+FLAC_close(handle)
+
+Print ex"\nDone."
+End
+
+
+Function UTF8ToSJIS(utf8Str AS BytePtr) As BytePtr
+	Dim l As Long,uni AS BytePtr
+	l=MultiByteToWideChar(CP_UTF8, 0, utf8Str, -1, NULL, 0)
+	uni=calloc(l*3)
+	UTF8ToSJIS=calloc(l*3)
+	MultiByteToWideChar(CP_UTF8, 0, utf8Str, -1, uni, l)
+	WideCharToMultiByte(CP_ACP,0,uni,-1,UTF8ToSJIS,l*3,0,0)
+	free(uni)
+End Function
