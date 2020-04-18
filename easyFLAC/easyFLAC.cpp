@@ -171,6 +171,34 @@ char * __CALLTYPE FLAC_getTagVal(FLAC__StreamMetadata *tags,char *fieldName){
 	return target+i;
 }
 
+bool easyFlac_Utf8ToAnsiWindows(const char* input, char* output, size_t output_length){
+	//size_t input_length;
+	//input_length=MultiByteToWideChar(CP_UTF8, 0, input, -1, NULL, 0);
+
+	const size_t utf16_buf_len = 256;
+	wchar_t utf16_buf[utf16_buf_len];
+	// metadataでそんなに大きなテキストは来ないでしょうという判断
+	// ちゃんと作るならinput_length*6ぐらいで確保すればいいはず（？）
+
+	// 一旦UTF16に変換してからAnsi(sjis)にする
+	MultiByteToWideChar(CP_UTF8, 0, input, -1, utf16_buf, utf16_buf_len);
+	WideCharToMultiByte(CP_ACP, 0, utf16_buf, utf16_buf_len, output, output_length, 0, 0);
+
+	return true;
+}
+
+bool easyFlac_Utf8ToLocalEncodeing(const char* input, char* output, size_t output_length){
+#if (WINVER >= 0x0400) 
+#ifdef EASYFLAC_TEXT_ENCODEING_ANSI
+	return easyFlac_Utf8ToAnsiWindows(input, output, output_length);
+#else
+	#error Not implement
+#endif
+#else
+	#error You must write iconv code here for your system.
+#endif
+}
+
 char * __CALLTYPE FLAC_makeInfomationString(EASY_FLAC_HANDLE handle,FLAC__StreamMetadata *tags){
 	if(handle==NULL) return "(null)";
 
@@ -193,10 +221,21 @@ char * __CALLTYPE FLAC_makeInfomationString(EASY_FLAC_HANDLE handle,FLAC__Stream
 	if(tags!=NULL){
 		FLAC__StreamMetadata_VorbisComment *comments = FLAC_getVorbisCommentFromTags(tags);
 		p+=sprintf_s(ret+p,INFOMATION_STRING_SIZE-p,
-			" --- TAG META DATA ---\nnum of comments : %d\nvender : %s\n",comments->num_comments,comments->vendor_string.entry);
-		for(unsigned i=0;i<comments->num_comments;i++)
+			" --- TAG META DATA ---\n"
+			"num of comments : %d\n"
+			"vender : %s\n",
+			comments->num_comments,
+			comments->vendor_string.entry);
+		for(unsigned i=0;i<comments->num_comments;i++){
+			// VorbisCommentはUTF8なので、文字コードを変換する
+			const size_t iconv_buffer_length=256;
+			char iconv_buffer[iconv_buffer_length];
+			easyFlac_Utf8ToLocalEncodeing((char*)comments->comments[i].entry,iconv_buffer,iconv_buffer_length);
+
 			p+=sprintf_s(ret+p,INFOMATION_STRING_SIZE-p,
-				"entry[%02d] %s\n",i,comments->comments[i].entry);
+				"entry[%02d] %s\n",
+				i,iconv_buffer);
+		}
 	}
 	realloc(ret,p+1);
 	return ret;

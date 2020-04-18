@@ -6,6 +6,7 @@
 
 #define __CALLTYPE __stdcall
 #define INFOMATION_STRING_SIZE 1024*10
+#define EASYFLAC_TEXT_ENCODEING_ANSI
 
 typedef struct{
 	char* filePath;
