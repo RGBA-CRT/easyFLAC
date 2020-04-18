@@ -1,11 +1,17 @@
 # easyFLAC
-簡易FLACデコーダ。コールバックとか作らなくていい。8/16/24bit対応
+簡易FLACデコーダ(libFLACのWrapper)。コールバックとか作らなくていい。8/16/24bit対応  
+Simple FLAC decoder library - libFLAC Wrapper
 
 ## できること
-
 + FLACファイルのデコード
 + シーク
 + VorbisCommentの取得
+ 
+ ## 特徴
+ + open, render, closeの3つの関数で簡単にデコードできる
+ + stdcallなので、C以外の言語でも使える（ActiveBaisc, HSPなど)
+ + BSD Licence (libFAAD部分)
+ + CC0 Licence (easyFLAC部分)
  
 ## デコードのサンプル
 引数のファイルを開いて"out.rwav"という名前で生サウンドデータを出力する例  
