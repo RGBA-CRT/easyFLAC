@@ -1,5 +1,6 @@
 // dllmain.cpp : DLL アプリケーションのエントリ ポイントを定義します。
 #include "stdafx.h"
+#include "easyFLAC.h"
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
@@ -15,6 +16,11 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		break;
 	}
 	return TRUE;
+}
+
+
+EASY_FLAC_HANDLE __CALLTYPE FLAC_openFileW(const char *FileName){
+	return FLAC_openFile(FileName);
 }
 
 /*

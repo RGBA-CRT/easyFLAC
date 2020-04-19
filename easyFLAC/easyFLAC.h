@@ -1,4 +1,6 @@
 //外部公開API
+#ifndef EASY_FLAC_EASY_FLAC_H
+#define EASY_FLAC_EASY_FLAC_H
 
 #include "share/compat.h"
 #include "FLAC/stream_decoder.h"
@@ -7,9 +9,11 @@
 #define __CALLTYPE __stdcall
 #define INFOMATION_STRING_SIZE 1024*10
 #define EASYFLAC_TEXT_ENCODEING_ANSI
+#define EFLAC_WINDOWS
 
 typedef struct{
 	char* filePath;
+	void* io_handle;
 	DWORD sample_rate;
 	DWORD channels;
 	DWORD bps;	
@@ -23,6 +27,7 @@ typedef struct{
 	FLAC__StreamDecoderInitStatus init_status;
 	DWORD renderPos;
 	BOOL  resume;
+	FLAC__StreamMetadata* vorbis_comment;
 }EASY_FLAC;
 
 typedef EASY_FLAC* EASY_FLAC_HANDLE;
@@ -64,3 +69,4 @@ void __CALLTYPE FLAC_freeInfomationString(char *InfoText);
  *	FLAC_makeInfomationString()でファイル情報の文字列を作成。
 		おわったらFLAC_freeInfomationString()で開放
  *	いろいろ終わったらFLAC_deleteTags()で開放。おわり*/
+#endif

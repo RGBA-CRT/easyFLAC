@@ -3,20 +3,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "easyFLAC.h"
-
-static FLAC__StreamDecoderWriteStatus write_callback(const FLAC__StreamDecoder *decoder, const FLAC__Frame *frame, const FLAC__int32 * const buffer[], void *client_data);
-static void metadata_callback(const FLAC__StreamDecoder *decoder, const FLAC__StreamMetadata *metadata, void *client_data);
-static void error_callback(const FLAC__StreamDecoder *decoder, FLAC__StreamDecoderErrorStatus status, void *client_data);
-
+#include "osal.h"
 
 EASY_FLAC_HANDLE __CALLTYPE FLAC_openFile(const char *FileName){
 	//handle作成
 	EASY_FLAC* handle = (EASY_FLAC*)malloc(sizeof(EASY_FLAC));	
+	memset(handle, 0x00, sizeof(EASY_FLAC));
 	
-	//ファイル名を保存しておく
-	handle->filePath = (char*)malloc(strlen(FileName)+5);
-	strcpy_s(handle->filePath,strlen(FileName)+1, FileName);
-
 	//libFLAC初期化
 	handle->decoder=FLAC__stream_decoder_new();
 	if(handle->decoder == NULL) 
@@ -24,7 +17,10 @@ EASY_FLAC_HANDLE __CALLTYPE FLAC_openFile(const char *FileName){
 
 	FLAC__stream_decoder_set_md5_checking(handle->decoder, true);
 
-	handle->init_status = FLAC__stream_decoder_init_file(handle->decoder,FileName, write_callback, metadata_callback, error_callback, handle);
+	// metadata callbackにvorbis commentが届くようにする
+	FLAC__stream_decoder_set_metadata_respond(handle->decoder, FLAC__METADATA_TYPE_VORBIS_COMMENT);
+
+	handle->init_status = osal_flacOpenFile(handle->decoder, FileName, handle);
 	if(handle->init_status != FLAC__STREAM_DECODER_INIT_STATUS_OK) {
 		FLAC_close(handle);
 		return NULL;
@@ -47,10 +43,26 @@ EASY_FLAC_HANDLE __CALLTYPE FLAC_openFile(const char *FileName){
 	return handle;
 }
 
-void __CALLTYPE FLAC_close(EASY_FLAC* handle){
-	if(handle->buffer!=NULL) free(handle->buffer);
-	if(handle->filePath!=NULL) free(handle->filePath);
+void __CALLTYPE FLAC_close(EASY_FLAC_HANDLE handle){
+	// file close
+	osal_flacCloseFile(handle);
+	
+	// release buffer
+	if(handle->buffer){
+		free(handle->buffer);
+		handle->buffer=NULL
+	}
+
+	// delete metadata of vorbis-comment 
+	if(handle->vorbis_comment){
+		FLAC__metadata_object_delete(handle->vorbis_comment);
+		handle->vorbis_comment = NULL;
+	}
+
+	// decoder delete
 	FLAC__stream_decoder_delete(handle->decoder);
+
+	// free EASY_FLAC_HANDLE
 	free(handle);
 	return;
 }
@@ -171,39 +183,17 @@ char * __CALLTYPE FLAC_getTagVal(FLAC__StreamMetadata *tags,char *fieldName){
 	return target+i;
 }
 
-bool easyFlac_Utf8ToAnsiWindows(const char* input, char* output, size_t output_length){
-	//size_t input_length;
-	//input_length=MultiByteToWideChar(CP_UTF8, 0, input, -1, NULL, 0);
-
-	const size_t utf16_buf_len = 256;
-	wchar_t utf16_buf[utf16_buf_len];
-	// metadataでそんなに大きなテキストは来ないでしょうという判断
-	// ちゃんと作るならinput_length*6ぐらいで確保すればいいはず（？）
-
-	// 一旦UTF16に変換してからAnsi(sjis)にする
-	MultiByteToWideChar(CP_UTF8, 0, input, -1, utf16_buf, utf16_buf_len);
-	WideCharToMultiByte(CP_ACP, 0, utf16_buf, utf16_buf_len, output, output_length, 0, 0);
-
-	return true;
-}
-
-bool easyFlac_Utf8ToLocalEncodeing(const char* input, char* output, size_t output_length){
-#if (WINVER >= 0x0400) 
-#ifdef EASYFLAC_TEXT_ENCODEING_ANSI
-	return easyFlac_Utf8ToAnsiWindows(input, output, output_length);
-#else
-	#error Not implement
-#endif
-#else
-	#error You must write iconv code here for your system.
-#endif
-}
 
 char * __CALLTYPE FLAC_makeInfomationString(EASY_FLAC_HANDLE handle,FLAC__StreamMetadata *tags){
 	if(handle==NULL) return "(null)";
 
 	char* ret=(char*)malloc(INFOMATION_STRING_SIZE);
 	int p;
+
+	const size_t path_len=256;
+	char filePath[path_len];
+	if(!osal_getFilePath(handle, filePath, path_len))
+		strcpy_s(filePath, sizeof(filePath), "<unsupported>");
 	
 	p = sprintf_s(ret,INFOMATION_STRING_SIZE,
 		"file  : %s\n"
@@ -211,7 +201,7 @@ char * __CALLTYPE FLAC_makeInfomationString(EASY_FLAC_HANDLE handle,FLAC__Stream
 		"sample rate  : %dHz\n"
 		"bit/sample   : %dbit\n"
 		"total samples: %d samples\n",
-		handle->filePath,
+		filePath,
 		handle->channels,
 		handle->sample_rate,
 		handle->bps,
@@ -228,69 +218,15 @@ char * __CALLTYPE FLAC_makeInfomationString(EASY_FLAC_HANDLE handle,FLAC__Stream
 			comments->vendor_string.entry);
 		for(unsigned i=0;i<comments->num_comments;i++){
 			// VorbisCommentはUTF8なので、文字コードを変換する
-			const size_t iconv_buffer_length=256;
-			char iconv_buffer[iconv_buffer_length];
-			easyFlac_Utf8ToLocalEncodeing((char*)comments->comments[i].entry,iconv_buffer,iconv_buffer_length);
+			//const size_t iconv_buffer_length=256;
+			//char iconv_buffer[iconv_buffer_length];
+			//easyFlac_Utf8ToLocalEncodeing((char*)comments->comments[i].entry,iconv_buffer,iconv_buffer_length);
 
 			p+=sprintf_s(ret+p,INFOMATION_STRING_SIZE-p,
 				"entry[%02d] %s\n",
-				i,iconv_buffer);
+				i,(char*)comments->comments[i].entry);
 		}
 	}
 	realloc(ret,p+1);
 	return ret;
-}
-
-FLAC__StreamDecoderWriteStatus write_callback(const FLAC__StreamDecoder *decoder, const FLAC__Frame *frame, const FLAC__int32 * const buffer[], void *client_data)
-{
-	EASY_FLAC_HANDLE handle=(EASY_FLAC_HANDLE)client_data;
-
-	if(handle->total_samples == 0) {
-		fprintf(stderr, "ERROR: this example only works for FLAC files that have a total_samples count in STREAMINFO\n");
-		return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
-	}
-
-	//PCM書き出し（8/16/24ビット全対応した結果↓）
-	#define bits (frame->header.bits_per_sample>>3)				// bps÷8
-	for(DWORD i = 0; i < frame->header.blocksize; i++) {		//SAMPLE毎
-		for(DWORD c = 0 ; c < frame->header.channels ; c++){	//CHANNEL毎
-			for(DWORD b=0; b<bits; b++){						//BIT毎
-				handle->buffer[
-					i*handle->sampleSize+c*bits+b				//1sample(ch * n bit sample)step + channel step + 8bit step
-						]=buffer[c][i]>>(b<<3) & 0x000000FF;
-			}
-		}
-	}
-
-	if(frame->header.bits_per_sample == 8){
-		for(DWORD i=0; i< frame->header.blocksize*bits*frame->header.channels; i++)
-			handle->buffer[i] = (char)handle->buffer[i] + (BYTE)0x80;
-	
-	}
-	
-	handle->blockSamples = frame->header.blocksize;
-
-	return FLAC__STREAM_DECODER_WRITE_STATUS_CONTINUE;
-}
-
-void metadata_callback(const FLAC__StreamDecoder *decoder, const FLAC__StreamMetadata *metadata, void *client_data)
-{
-	EASY_FLAC* handle=(EASY_FLAC*)client_data;
-	(void)decoder, (void)client_data;
-
-	/* print some stats */
-	if(metadata->type == FLAC__METADATA_TYPE_STREAMINFO) {
-		/* save for later */
-		handle->total_samples = metadata->data.stream_info.total_samples;
-		handle->sample_rate = metadata->data.stream_info.sample_rate;
-		handle->channels = metadata->data.stream_info.channels;
-		handle->bps = metadata->data.stream_info.bits_per_sample;
-	}
-}
-
-void error_callback(const FLAC__StreamDecoder *decoder, FLAC__StreamDecoderErrorStatus status, void *client_data)
-{
-	(void)decoder, (void)client_data;
-
-	fprintf(stderr, "Got error callback: %s\n", FLAC__StreamDecoderErrorStatusString[status]);
 }
