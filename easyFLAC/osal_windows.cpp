@@ -14,10 +14,10 @@ typedef struct {
 // callbacks
 // ==================
 FLAC__StreamDecoderReadStatus
-read_callback_win(const FLAC__StreamDecoder *decoder, FLAC__byte buffer[],
-                  size_t *bytes, void *client_data) {
-  EASY_FLAC_HANDLE ef_handle = (EASY_FLAC_HANDLE)client_data;
-  osal_win_data *osal_data   = (osal_win_data *)ef_handle->io_handle;
+read_callback_win(const FLAC__StreamDecoder* decoder, FLAC__byte buffer[],
+                  size_t* bytes, void* client_data) {
+  EASYFLAC_HANDLE ef_handle = (EASYFLAC_HANDLE)client_data;
+  osal_win_data* osal_data  = (osal_win_data*)ef_handle->io_handle;
   DWORD dwAB;
 
   if (!ReadFile(osal_data->file_handle,
@@ -36,10 +36,10 @@ read_callback_win(const FLAC__StreamDecoder *decoder, FLAC__byte buffer[],
 }
 
 FLAC__StreamDecoderSeekStatus
-seek_callback_win(const FLAC__StreamDecoder *decoder,
-                  FLAC__uint64 absolute_byte_offset, void *client_data) {
-  EASY_FLAC_HANDLE ef_handle = (EASY_FLAC_HANDLE)client_data;
-  osal_win_data *osal_data   = (osal_win_data *)ef_handle->io_handle;
+seek_callback_win(const FLAC__StreamDecoder* decoder,
+                  FLAC__uint64 absolute_byte_offset, void* client_data) {
+  EASYFLAC_HANDLE ef_handle = (EASYFLAC_HANDLE)client_data;
+  osal_win_data* osal_data  = (osal_win_data*)ef_handle->io_handle;
 
   LARGE_INTEGER li;
   li.QuadPart = absolute_byte_offset;
@@ -54,10 +54,10 @@ seek_callback_win(const FLAC__StreamDecoder *decoder,
 }
 
 FLAC__StreamDecoderTellStatus
-tell_callback_win(const FLAC__StreamDecoder *decoder,
-                  FLAC__uint64 *absolute_byte_offset, void *client_data) {
-  EASY_FLAC_HANDLE ef_handle = (EASY_FLAC_HANDLE)client_data;
-  osal_win_data *osal_data   = (osal_win_data *)ef_handle->io_handle;
+tell_callback_win(const FLAC__StreamDecoder* decoder,
+                  FLAC__uint64* absolute_byte_offset, void* client_data) {
+  EASYFLAC_HANDLE ef_handle = (EASYFLAC_HANDLE)client_data;
+  osal_win_data* osal_data  = (osal_win_data*)ef_handle->io_handle;
 
   LARGE_INTEGER li;
   li.QuadPart = 0;
@@ -74,10 +74,10 @@ tell_callback_win(const FLAC__StreamDecoder *decoder,
 }
 
 FLAC__StreamDecoderLengthStatus
-length_callback_win(const FLAC__StreamDecoder *decoder,
-                    FLAC__uint64 *stream_length, void *client_data) {
-  EASY_FLAC_HANDLE ef_handle = (EASY_FLAC_HANDLE)client_data;
-  osal_win_data *osal_data   = (osal_win_data *)ef_handle->io_handle;
+length_callback_win(const FLAC__StreamDecoder* decoder,
+                    FLAC__uint64* stream_length, void* client_data) {
+  EASYFLAC_HANDLE ef_handle = (EASYFLAC_HANDLE)client_data;
+  osal_win_data* osal_data  = (osal_win_data*)ef_handle->io_handle;
 
   LARGE_INTEGER li;
   li.LowPart = GetFileSize(osal_data->file_handle, (LPDWORD)&li.HighPart);
@@ -90,10 +90,10 @@ length_callback_win(const FLAC__StreamDecoder *decoder,
   }
 }
 
-FLAC__bool eof_callback_win(const FLAC__StreamDecoder *decoder,
-                            void *client_data) {
-  EASY_FLAC_HANDLE ef_handle = (EASY_FLAC_HANDLE)client_data;
-  osal_win_data *osal_data   = (osal_win_data *)ef_handle->io_handle;
+FLAC__bool eof_callback_win(const FLAC__StreamDecoder* decoder,
+                            void* client_data) {
+  EASYFLAC_HANDLE ef_handle = (EASYFLAC_HANDLE)client_data;
+  osal_win_data* osal_data  = (osal_win_data*)ef_handle->io_handle;
 
   FLAC__uint64 file_ptr;
   if (tell_callback_win(decoder, &file_ptr, client_data) !=
@@ -106,13 +106,13 @@ FLAC__bool eof_callback_win(const FLAC__StreamDecoder *decoder,
 // ==================
 // osal impl
 // ==================
-FLAC__StreamDecoderInitStatus osal_flacOpenFile(FLAC__StreamDecoder *decoder,
-                                                const char *filename,
-                                                EASY_FLAC_HANDLE handle) {
+FLAC__StreamDecoderInitStatus osal_flacOpenFile(FLAC__StreamDecoder* decoder,
+                                                const char* filename,
+                                                EASYFLAC_HANDLE handle) {
 
   // init osal_data
   handle->io_handle        = malloc(sizeof(osal_win_data));
-  osal_win_data *osal_data = (osal_win_data *)handle->io_handle;
+  osal_win_data* osal_data = (osal_win_data*)handle->io_handle;
   memset(osal_data, 0x00, sizeof(osal_win_data));
 
   // openfile
@@ -137,7 +137,7 @@ FLAC__StreamDecoderInitStatus osal_flacOpenFile(FLAC__StreamDecoder *decoder,
 
   //ファイル名を保存しておく
   size_t filename_len = lstrlenW(filename_utf16) + 1;
-  handle->filePath    = (char *)malloc(filename_len * sizeof(wchar_t));
+  handle->filePath    = (char*)malloc(filename_len * sizeof(wchar_t));
   lstrcpynW((LPWSTR)handle->filePath, filename_utf16, filename_len);
 
   return FLAC__stream_decoder_init_stream(decoder,
@@ -152,29 +152,29 @@ FLAC__StreamDecoderInitStatus osal_flacOpenFile(FLAC__StreamDecoder *decoder,
                                           handle);
 }
 
-void osal_flacCloseFile(EASY_FLAC_HANDLE handle) {
+void osal_flacCloseFile(EASYFLAC_HANDLE handle) {
   if (handle->filePath != NULL) {
     free(handle->filePath);
     handle->filePath = NULL;
   }
 
   // release osal datas
-  osal_win_data *osal_data = (osal_win_data *)handle->io_handle;
+  osal_win_data* osal_data = (osal_win_data*)handle->io_handle;
   CloseHandle(osal_data->file_handle);
   memset(osal_data, 0x00, sizeof(osal_win_data));
   free(osal_data);
   handle->io_handle;
 }
 
-bool utf16_to_utf8(const wchar_t *input, char *output, size_t output_length) {
+bool utf16_to_utf8(const wchar_t* input, char* output, size_t output_length) {
   int iconv_ret =
       WideCharToMultiByte(CP_UTF8, 0, input, -1, output, output_length, 0, 0);
   return iconv_ret != 0;
 }
 
-bool osal_getFilePath(EASY_FLAC_HANDLE handle, char *file_path,
+bool osal_getFilePath(EASYFLAC_HANDLE handle, char* file_path,
                       size_t file_path_len) {
-  return utf16_to_utf8((wchar_t *)handle->filePath, file_path, file_path_len);
+  return utf16_to_utf8((wchar_t*)handle->filePath, file_path, file_path_len);
 }
 
 //==============

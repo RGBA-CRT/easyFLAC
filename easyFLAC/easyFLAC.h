@@ -1,4 +1,3 @@
-//�O�����JAPI
 #ifndef EASY_FLAC_EASY_FLAC_H
 #define EASY_FLAC_EASY_FLAC_H
 
@@ -12,22 +11,22 @@
 #define EFLAC_WINDOWS
 
 typedef struct {
-  char *filePath;
-  void *io_handle;
+  char* filePath;
+  void* io_handle;
   DWORD sample_rate;
   DWORD channels;
   DWORD bps;
-  FLAC__StreamDecoderState status; // decodeing state
   DWORD sampleSize;
+  DWORD renderPos;
+  DWORD blockSamples;
+  BOOL resume;
   FLAC__uint64 nowSamples;
   FLAC__uint64 total_samples;
-  DWORD blockSamples;
-  BYTE *buffer;
-  FLAC__StreamDecoder *decoder;
+  BYTE* buffer;
+  FLAC__StreamDecoder* decoder;
+  FLAC__StreamDecoderState status; // decodeing state
+  FLAC__StreamMetadata* vorbis_comment;
   FLAC__StreamDecoderInitStatus init_status;
-  DWORD renderPos;
-  BOOL resume;
-  FLAC__StreamMetadata *vorbis_comment;
 } EASY_FLAC;
 
 typedef struct {
@@ -38,31 +37,42 @@ typedef struct {
   FLAC__uint64 total_samples;
 } EASY_FLAC_FILE_INFO;
 
-typedef EASY_FLAC *EASY_FLAC_HANDLE;
+typedef EASY_FLAC* EASYFLAC_HANDLE;
 typedef unsigned char BYTE;
 
-// audio api
-EASY_FLAC_HANDLE __CALLTYPE FLAC_openFile(const char *FileName);
-void __CALLTYPE FLAC_close(EASY_FLAC *handle);
-FLAC__StreamDecoderState __CALLTYPE FLAC_render(EASY_FLAC_HANDLE handle,
-                                                BYTE *buffer, DWORD maxSamples,
-                                                DWORD *used_length);
+// === audio api ===
+EASYFLAC_HANDLE __CALLTYPE FLAC_openFile(const char* FileName);
+void __CALLTYPE FLAC_close(EASY_FLAC* handle);
+
+// render wave from flac
+// [arg] buffer: wave buffer
+// [arg] maxSamples: wave buffer length
+// [arg] used_length: 書き込まれたサンプル数をセットするためのポインタ
+FLAC__StreamDecoderState __CALLTYPE FLAC_render(EASYFLAC_HANDLE handle,
+                                                BYTE* buffer, DWORD maxSamples,
+                                                DWORD* used_length);
 
 // seek
-void __CALLTYPE FLAC_seek(EASY_FLAC_HANDLE handle, uint64_t posSampleNum);
-void __CALLTYPE FLAC_tell(EASY_FLAC_HANDLE handle, uint64_t* posSampleNum);
+void __CALLTYPE FLAC_seek(EASYFLAC_HANDLE handle, uint64_t posSampleNum);
+// get playing sample number
+void __CALLTYPE FLAC_tell(EASYFLAC_HANDLE handle, uint64_t* posSampleNum);
 
 // === metadata api ===
-FLAC__StreamMetadata *__CALLTYPE FLAC_getTags(const char *fileName);
-void __CALLTYPE FLAC_deleteTags(FLAC__StreamMetadata *tags);
-FLAC__StreamMetadata_VorbisComment *__CALLTYPE
-FLAC_getVorbisCommentFromHandle(EASY_FLAC_HANDLE handle);
+
+// get StreamMetaData from file. 
+// return pointer must release using FLAC_deleteTags.
+FLAC__StreamMetadata* __CALLTYPE FLAC_getTags(const char* fileName);
+void __CALLTYPE FLAC_deleteTags(FLAC__StreamMetadata* tags);
+
+// get VorbisComment from current opening file.
+FLAC__StreamMetadata_VorbisComment* __CALLTYPE
+FLAC_getVorbisCommentFromHandle(EASYFLAC_HANDLE handle);
 
 // note: text encoding is utf8
-char *__CALLTYPE FLAC_makeInfomationString(EASY_FLAC_HANDLE handle);
-void __CALLTYPE FLAC_freeInfomationString(char *InfoText);
+char* __CALLTYPE FLAC_makeInfomationString(EASYFLAC_HANDLE handle);
+void __CALLTYPE FLAC_freeInfomationString(char* InfoText);
 
-char *__CALLTYPE FLAC_findComment(EASY_FLAC_HANDLE handle, char *fieldName);
+char* __CALLTYPE FLAC_findComment(EASYFLAC_HANDLE handle, char* fieldName);
 
 // ======================
 

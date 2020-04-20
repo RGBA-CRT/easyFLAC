@@ -1,11 +1,10 @@
 
 #include "common_callback.h"
 
-
 FLAC__StreamDecoderWriteStatus
 write_callback(const FLAC__StreamDecoder *decoder, const FLAC__Frame *frame,
                const FLAC__int32 *const buffer[], void *client_data) {
-  EASY_FLAC_HANDLE handle = (EASY_FLAC_HANDLE)client_data;
+  EASYFLAC_HANDLE handle = (EASYFLAC_HANDLE)client_data;
 
   if (handle->total_samples == 0) {
     fprintf(stderr,
@@ -15,13 +14,13 @@ write_callback(const FLAC__StreamDecoder *decoder, const FLAC__Frame *frame,
   }
 
   // PCM書き出し（8/16/24ビット全対応した結果↓）
-	int sample_bytes = (frame->header.bits_per_sample >> 3); // bps÷8
-  for (DWORD idx = 0; idx < frame->header.blocksize; idx++) {  // SAMPLE毎
-    for (DWORD ch = 0; ch < frame->header.channels; ch++) { // CHANNEL毎
-      for (DWORD byte_idx = 0; byte_idx < sample_bytes; byte_idx++) {                 // BIT毎
-        handle->buffer[idx * handle->sampleSize + 
-												ch * sample_bytes + byte_idx
-        ] = buffer[ch][idx] >> (byte_idx << 3) & 0x000000FF;
+  DWORD sample_bytes = (frame->header.bits_per_sample >> 3);  // bps÷8
+  for (DWORD idx = 0; idx < frame->header.blocksize; idx++) { // SAMPLE毎
+    for (DWORD ch = 0; ch < frame->header.channels; ch++) {   // CHANNEL毎
+      for (DWORD byte_idx = 0; byte_idx < sample_bytes; byte_idx++) { // BIT毎
+        handle
+            ->buffer[idx * handle->sampleSize + ch * sample_bytes + byte_idx] =
+            buffer[ch][idx] >> (byte_idx << 3) & 0x000000FF;
       }
     }
   }
@@ -51,10 +50,9 @@ void metadata_callback(const FLAC__StreamDecoder *decoder,
     handle->sample_rate   = metadata->data.stream_info.sample_rate;
     handle->channels      = metadata->data.stream_info.channels;
     handle->bps           = metadata->data.stream_info.bits_per_sample;
-  
-  }else if(metadata->type == FLAC__METADATA_TYPE_VORBIS_COMMENT){
-	  handle->vorbis_comment = FLAC__metadata_object_clone(metadata);
 
+  } else if (metadata->type == FLAC__METADATA_TYPE_VORBIS_COMMENT) {
+    handle->vorbis_comment = FLAC__metadata_object_clone(metadata);
   }
 }
 
