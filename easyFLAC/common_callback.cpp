@@ -54,6 +54,7 @@ void metadata_callback(const FLAC__StreamDecoder *decoder,
   
   }else if(metadata->type == FLAC__METADATA_TYPE_VORBIS_COMMENT){
 	  handle->vorbis_comment = FLAC__metadata_object_clone(metadata);
+
   }
 }
 

@@ -5,11 +5,12 @@ EXPORTS
 	FLAC_render
 
 	FLAC_seek
+	FLAC_tell
 	
 	FLAC_getTags
 	FLAC_deleteTags
-	FLAC_getVorbisCommentFromTags
 	FLAC_makeInfomationString
 	FLAC_freeInfomationString
-	FLAC__metadata_object_vorbiscomment_find_entry_from_std
-	FLAC_getTagVal
+	FLAC_getVorbisCommentFromHandle
+	FLAC_findComment
+	FLAC_getFileInfo

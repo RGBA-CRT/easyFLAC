@@ -1,29 +1,24 @@
-// dllmain.cpp : DLL アプリケーションのエントリ ポイントを定義します。
-#include "stdafx.h"
+// dllmain.cpp : DLL 繧｢繝励Μ繧ｱ繝ｼ繧ｷ繝ｧ繝ｳ縺ｮ繧ｨ繝ｳ繝医Μ 繝昴う繝ｳ繝医ｒ螳夂ｾｩ縺励∪縺吶・
 #include "easyFLAC.h"
+#include "stdafx.h"
 
-BOOL APIENTRY DllMain( HMODULE hModule,
-                       DWORD  ul_reason_for_call,
-                       LPVOID lpReserved
-					 )
-{
-	switch (ul_reason_for_call)
-	{
-	case DLL_PROCESS_ATTACH:
-	case DLL_THREAD_ATTACH:
-	case DLL_THREAD_DETACH:
-	case DLL_PROCESS_DETACH:
-		break;
-	}
-	return TRUE;
+
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call,
+                      LPVOID lpReserved) {
+  switch (ul_reason_for_call) {
+  case DLL_PROCESS_ATTACH:
+  case DLL_THREAD_ATTACH:
+  case DLL_THREAD_DETACH:
+  case DLL_PROCESS_DETACH: break;
+  }
+  return TRUE;
 }
 
-
-EASY_FLAC_HANDLE __CALLTYPE FLAC_openFileW(const char *FileName){
-	return FLAC_openFile(FileName);
+EASY_FLAC_HANDLE __CALLTYPE FLAC_openFileW(const char *FileName) {
+  return FLAC_openFile(FileName);
 }
 
 /*
- * todo: 文字コードがファイルパスとタグで混在してるので直す
+ * todo: 譁・ｭ励さ繝ｼ繝峨′繝輔ぃ繧､繝ｫ繝代せ縺ｨ繧ｿ繧ｰ縺ｧ豺ｷ蝨ｨ縺励※繧九・縺ｧ逶ｴ縺・
 
 */
