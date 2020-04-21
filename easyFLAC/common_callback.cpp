@@ -6,12 +6,12 @@ write_callback(const FLAC__StreamDecoder *decoder, const FLAC__Frame *frame,
                const FLAC__int32 *const buffer[], void *client_data) {
   EASYFLAC_HANDLE handle = (EASYFLAC_HANDLE)client_data;
 
-  if (handle->total_samples == 0) {
-    fprintf(stderr,
-            "ERROR: this example only works for FLAC files that have a "
-            "total_samples count in STREAMINFO\n");
-    return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
-  }
+  // if (handle->total_samples == 0) {
+  //   fprintf(stderr,
+  //           "ERROR: this example only works for FLAC files that have a "
+  //           "total_samples count in STREAMINFO\n");
+  //   return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
+  // }
 
   // PCM書き出し（8/16/24ビット全対応した結果↓）
   DWORD sample_bytes = (frame->header.bits_per_sample >> 3);  // bps÷8
@@ -33,7 +33,7 @@ write_callback(const FLAC__StreamDecoder *decoder, const FLAC__Frame *frame,
   }
 
   handle->blockSamples = frame->header.blocksize;
-
+  
   return FLAC__STREAM_DECODER_WRITE_STATUS_CONTINUE;
 }
 

@@ -18,4 +18,9 @@ void osal_flacCloseFile(EASYFLAC_HANDLE handle);
 bool osal_getFilePath(EASYFLAC_HANDLE handle, char* file_path,
                       size_t file_path_len);
 
+void* osal_createMutex();
+void osal_deleteMutex(void* mutex_handle);
+bool osal_lockMutex(void* mutex_handle, int timeout);
+bool osal_unlockMutex(void* mutex_handle);
+
 #endif

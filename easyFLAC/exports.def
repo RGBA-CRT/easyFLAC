@@ -1,6 +1,5 @@
-; Windows”Å‚ÍW‚Ì‚Ý
 EXPORTS
-	FLAC_openFileW
+	FLAC_openFile
 	FLAC_close
 	FLAC_render
 

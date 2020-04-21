@@ -13,12 +13,3 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call,
   }
   return TRUE;
 }
-
-EASYFLAC_HANDLE __CALLTYPE FLAC_openFileW(const char *FileName) {
-  return FLAC_openFile(FileName);
-}
-
-/*
- * todo: 斁E��コードがファイルパスとタグで混在してる�Eで直ぁE
-
-*/

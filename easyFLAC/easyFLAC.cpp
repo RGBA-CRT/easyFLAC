@@ -41,6 +41,8 @@ EASYFLAC_HANDLE __CALLTYPE FLAC_openFile(const char* FileName) {
   handle->nowSamples = 0;
   handle->resume     = FALSE;
 
+  handle->decoder_mutex = osal_createMutex();
+
   return handle;
 }
 
@@ -62,6 +64,9 @@ void __CALLTYPE FLAC_close(EASYFLAC_HANDLE handle) {
 
   // decoder delete
   FLAC__stream_decoder_delete(handle->decoder);
+  handle->decoder = NULL;
+
+  osal_deleteMutex(handle->decoder_mutex);
 
   // free EASYFLAC_HANDLE
   free(handle);
@@ -69,18 +74,19 @@ void __CALLTYPE FLAC_close(EASYFLAC_HANDLE handle) {
 }
 
 FLAC__StreamDecoderState __CALLTYPE FLAC_render(EASYFLAC_HANDLE handle,
-                                                BYTE* buffer, DWORD maxSamples,
-                                                DWORD* used_length) {
-  DWORD bufPos = 0;
+                                                BYTE* buffer,
+                                                uint32_t max_samples,
+                                                uint32_t* used_samples) {
+  uint32_t bufPos = 0;
 
   //ブロックサイズより出力サイズの方が小さい場合(renderPos使用)
   if (handle->resume == TRUE) {
   FR_RESUME:
-    DWORD outSamples;
+    uint32_t outSamples;
 
     bufPos = handle->renderPos;
-    if (maxSamples < (handle->blockSamples - handle->renderPos)) {
-      outSamples     = maxSamples;
+    if (max_samples < (handle->blockSamples - handle->renderPos)) {
+      outSamples     = max_samples;
       handle->resume = TRUE;
       handle->renderPos += outSamples;
     } else {
@@ -94,7 +100,7 @@ FLAC__StreamDecoderState __CALLTYPE FLAC_render(EASYFLAC_HANDLE handle,
            handle->buffer + bufPos * handle->sampleSize,
            outSamples * handle->sampleSize);
     handle->nowSamples += outSamples;
-    *used_length   = outSamples;
+    *used_samples  = outSamples;
     handle->status = FLAC__stream_decoder_get_state(handle->decoder);
     return handle->status;
   }
@@ -105,8 +111,11 @@ FLAC__StreamDecoderState __CALLTYPE FLAC_render(EASYFLAC_HANDLE handle,
 
   //要求量を越さない程度にデコード
   while (1) {
+    osal_lockMutex(handle->decoder_mutex, -1);
     FLAC__stream_decoder_process_single(handle->decoder);
-    if (maxSamples < handle->blockSamples) goto FR_RESUME;
+    osal_unlockMutex(handle->decoder_mutex);
+
+    if (max_samples < handle->blockSamples) goto FR_RESUME;
 
     handle->status = FLAC__stream_decoder_get_state(handle->decoder);
 
@@ -116,12 +125,12 @@ FLAC__StreamDecoderState __CALLTYPE FLAC_render(EASYFLAC_HANDLE handle,
     bufPos += handle->blockSamples;
 
     //次であふれるなら終了
-    if (bufPos + handle->blockSamples > maxSamples) break;
+    if (bufPos + handle->blockSamples > max_samples) break;
 
     if (handle->status == FLAC__STREAM_DECODER_END_OF_STREAM) break;
   }
   handle->nowSamples += bufPos;
-  *used_length = bufPos;
+  *used_samples = bufPos;
   return handle->status;
 }
 
@@ -132,10 +141,14 @@ void __CALLTYPE FLAC_seek(EASYFLAC_HANDLE handle, uint64_t posSample) {
   handle->resume     = FALSE;
   handle->nowSamples = posSample;
 
-  if (handle->status == FLAC__STREAM_DECODER_END_OF_STREAM)
-    FLAC__stream_decoder_reset(handle->decoder);
+  osal_lockMutex(handle->decoder_mutex, -1);
+  {
+    if (handle->status == FLAC__STREAM_DECODER_END_OF_STREAM)
+      FLAC__stream_decoder_reset(handle->decoder);
 
-  FLAC__stream_decoder_seek_absolute(handle->decoder, (FLAC__uint64)posSample);
+    FLAC__stream_decoder_seek_absolute(handle->decoder, posSample);
+  }
+  osal_unlockMutex(handle->decoder_mutex);
   return;
 }
 

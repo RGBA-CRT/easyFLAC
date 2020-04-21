@@ -160,10 +160,14 @@ void osal_flacCloseFile(EASYFLAC_HANDLE handle) {
 
   // release osal datas
   osal_win_data* osal_data = (osal_win_data*)handle->io_handle;
+
   CloseHandle(osal_data->file_handle);
+  osal_data->file_len = 0;
+
   memset(osal_data, 0x00, sizeof(osal_win_data));
   free(osal_data);
-  handle->io_handle;
+
+  handle->io_handle = NULL;
 }
 
 bool utf16_to_utf8(const wchar_t* input, char* output, size_t output_length) {
@@ -175,6 +179,26 @@ bool utf16_to_utf8(const wchar_t* input, char* output, size_t output_length) {
 bool osal_getFilePath(EASYFLAC_HANDLE handle, char* file_path,
                       size_t file_path_len) {
   return utf16_to_utf8((wchar_t*)handle->filePath, file_path, file_path_len);
+}
+
+//----------
+
+void* osal_createMutex() {
+  LPCRITICAL_SECTION ret = (LPCRITICAL_SECTION)malloc(sizeof(CRITICAL_SECTION));
+  InitializeCriticalSection(ret);
+  return (void*)ret;
+}
+void osal_deleteMutex(void* mutex_handle) {
+  DeleteCriticalSection((LPCRITICAL_SECTION)mutex_handle);
+  free(mutex_handle);
+}
+bool osal_lockMutex(void* mutex_handle, int timeout) {
+  EnterCriticalSection((LPCRITICAL_SECTION)mutex_handle);
+  return true;
+}
+bool osal_unlockMutex(void* mutex_handle) {
+  LeaveCriticalSection((LPCRITICAL_SECTION)mutex_handle);
+  return true;
 }
 
 //==============
