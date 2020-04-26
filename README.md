@@ -51,5 +51,8 @@ int main(int argc, char* argv[]) {
 
   return 0;
 }
-```
-  
+``` 
+
+---
+Programmed by RGBA_CRT 2020  
+Project url: https://github.com/RGBA-CRT/easyFLAC/
