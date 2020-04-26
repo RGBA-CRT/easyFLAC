@@ -5,6 +5,8 @@
 #include "easyFLAC.h"
 #include <Windows.h>
 
+const char* osal_type = "windows(unicode)";
+
 typedef struct {
   HANDLE file_handle;
   uint64_t file_len;
@@ -128,7 +130,7 @@ FLAC__StreamDecoderInitStatus osal_flacOpenFile(FLAC__StreamDecoder* decoder,
   if (osal_data->file_handle == INVALID_HANDLE_VALUE) {
     osal_data->file_handle = NULL;
     int gle                = GetLastError();
-    fprintf(stderr, "gle:%d\r\n", gle);
+    fprintf(stderr, "[easyFLAC] GLE:%d\r\n", gle);
     return FLAC__STREAM_DECODER_INIT_STATUS_ERROR_OPENING_FILE;
   }
 

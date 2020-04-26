@@ -5,6 +5,8 @@
 #define EASYFLAC_OSAL_H
 #include "easyFLAC.h"
 
+extern const char* osal_type;
+
 // open flac file
 // filename's text encoding are depends your system.
 // this function sets handle.decoder, .filePath, .io_handle

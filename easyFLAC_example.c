@@ -4,66 +4,72 @@
 
 #define TEST_SAMPLE_SIZE 40000
 
-int _tmain(int argc, _TCHAR* argv[])
-{
-	printf("EASY_FLAC_PROTOTYPE - PROGRAMMED BY RGBA_CRT v2017.2.25\n");
-	if(argc==1){
-		printf("usege: easyFLAC_test.exe filename\n");
-		return 1;
-	}
+int main(int argc, char* argv[]) {
+  printf("EASYFLAC_PROTOTYPE - PROGRAMMED BY RGBA_CRT rev2 2020.4.24\n");
 
-	printf("size of EASY_FLAC : %d\n",sizeof(EASY_FLAC));
+  // version
+  const char *libver, *osal;
+  FLAC_getVersion(&libver, &osal);
+  printf("%s, osal-type:%s\n", libver, osal);
 
-	FLAC__StreamMetadata *tags=FLAC_getTags(argv[1]);
-	
-	if( tags==NULL ){
-		printf("this file haven't metadata.\n");
-	}else{
-		FLAC__StreamMetadata_VorbisComment *comments = FLAC_getVorbisCommentFromTags(tags);
-		printf("num of comments : %d\nvender : %s\n",comments->num_comments,comments->vendor_string.entry);
-		for(unsigned i=0;i<comments->num_comments;i++)
-			printf("[%02d] %s\n",i,comments->comments[i].entry);
-		printf("title = %d , %s\n",FLAC__metadata_object_vorbiscomment_find_entry_from_std(tags,0,"TITLE"),FLAC_getTagVal(tags,"TITLE"));
+  if (argc == 1) {
+    printf("usege: easyFLAC_test.exe filename\n");
+    return 1;
+  }
 
-	}
+  //--------------------------------------
+  EASYFLAC_HANDLE handle;
 
-	//--------------------------------------
-	EASY_FLAC_HANDLE handle;
+  handle = FLAC_openFile((char*)argv[1]);
+  if (handle == NULL) {
+    printf("flac open error!\n");
+    return 1;
+  }
 
-	handle=FLAC_openFile((char*)argv[1]);
-	if(handle==NULL){
-		printf("flac open error!\n");
-		return 1;
-	}
+  // basic sound info
+  EASYFLAC_FILE_INFO info;
+  FLAC_getFileInfo(handle, &info);
+  printf("sample rate    : %u Hz\n", info.sample_rate);
+  printf("channels       : %u\n", info.channels);
+  printf("bits per sample: %u\n", info.bps);
+  printf("total samples  : %ld\n", info.total_samples);
+  printf("sample uint8_ts   : %ld\n", info.sample_size);
 
-	fprintf(stderr, "sample rate    : %u Hz\n", handle->sample_rate);
-	fprintf(stderr, "channels       : %u\n", handle->channels);
-	fprintf(stderr, "bits per sample: %u\n", handle->bps);
-	fprintf(stderr, "total samples  : %ld\n", handle->total_samples);
-	fprintf(stderr, "sample bytes   : %ld\n", handle->sampleSize);
+  // info string
+  char* info_str = FLAC_makeInfomationString(handle);
+  printf(" --- info string ---\n%s\n", info_str);
+  FLAC_freeInfomationString(info_str);
 
-	BYTE buffer[TEST_SAMPLE_SIZE*6]={0xFF};
-	FILE *fout;
-	fopen_s(&fout,"out.rwav","wb");
+  // vorbis comment
+  const char* vc_field_name  = "TITLE";
+  FLAC__StreamMetadata* tags = FLAC_getVorbisCommentFromHandle(handle);
+  const char* comment_utf8   = FLAC_findComment(tags, vc_field_name);
+  if (comment_utf8) { printf("%s = %s\n\n", vc_field_name, comment_utf8); }
 
-	DWORD samples;
-	while(1){
-		samples=FLAC_render(handle,buffer,TEST_SAMPLE_SIZE);
-		printf(".");
-		fwrite(buffer,samples,handle->sampleSize,fout);
-		if(handle->ok==FLAC__STREAM_DECODER_END_OF_STREAM)
-			break;
-	}
+  // decode
+  uint8_t buffer[TEST_SAMPLE_SIZE * 6] = {0xFF};
+  FILE* fout;
+  fout = fopen("out.rwav", "wb");
+  if (!fout) {
+    printf("output file open err\n");
+    return -1;
+  }
 
-	
-	
-	printf(FLAC_makeInfomationString(handle,tags));
+  uint32_t decoded_samples;
+  FLAC__StreamDecoderState render_ret;
+  while (1) {
+    render_ret =
+        FLAC_render(handle, buffer, TEST_SAMPLE_SIZE, &decoded_samples);
+    printf(".");
+    fwrite(buffer, decoded_samples, handle->sampleSize, fout);
+    if (render_ret == FLAC__STREAM_DECODER_END_OF_STREAM) break;
+  }
 
-	FLAC_close(handle);
+  FLAC_close(handle);
 
-	fclose(fout);
+  fclose(fout);
 
-	printf("\ndone.");
+  printf("\ndone.");
 
-	return 0;
+  return 0;
 }

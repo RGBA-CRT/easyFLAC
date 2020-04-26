@@ -1,15 +1,13 @@
 EXPORTS
 	FLAC_openFile
 	FLAC_close
+	FLAC_getFileInfo
 	FLAC_render
 
 	FLAC_seek
 	FLAC_tell
 	
-	FLAC_getTags
-	FLAC_deleteTags
-	FLAC_makeInfomationString
-	FLAC_freeInfomationString
 	FLAC_getVorbisCommentFromHandle
 	FLAC_findComment
-	FLAC_getFileInfo
+	FLAC_makeInfomationString
+	FLAC_freeInfomationString

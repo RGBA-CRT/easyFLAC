@@ -66,7 +66,7 @@ void __CALLTYPE FLAC_close(EASYFLAC_HANDLE handle) {
   FLAC__stream_decoder_delete(handle->decoder);
   handle->decoder = NULL;
 
-  osal_deleteMutex(handle->decoder_mutex);
+  if (handle->decoder_mutex) osal_deleteMutex(handle->decoder_mutex);
 
   // free EASYFLAC_HANDLE
   free(handle);
@@ -158,31 +158,40 @@ void __CALLTYPE FLAC_tell(EASYFLAC_HANDLE handle, uint64_t* posSampleNum) {
   (*posSampleNum) = handle->nowSamples;
 }
 
-FLAC__StreamMetadata* __CALLTYPE FLAC_getTags(const char* fileName) {
-  FLAC__StreamMetadata* tags;
-  if (!FLAC__metadata_get_tags(fileName, &tags)) {
-    // printf("this file haven't metadata.\n");
-    return NULL;
-  } else {
-    return tags;
-  }
-}
-
-void __CALLTYPE FLAC_deleteTags(FLAC__StreamMetadata* tags) {
-  FLAC__metadata_object_delete(tags);
-}
-
-FLAC__StreamMetadata_VorbisComment* __CALLTYPE
+FLAC__StreamMetadata* __CALLTYPE
 FLAC_getVorbisCommentFromHandle(EASYFLAC_HANDLE handle) {
   if (handle->vorbis_comment == NULL ||
       handle->vorbis_comment->type != FLAC__METADATA_TYPE_VORBIS_COMMENT) {
     return NULL;
   }
-  return &handle->vorbis_comment->data.vorbis_comment;
+  return handle->vorbis_comment;
+}
+
+const char* __CALLTYPE FLAC_findComment(FLAC__StreamMetadata* handle,
+                                        const char* fieldName) {
+  if (handle == NULL) return NULL;
+  if (handle->type != FLAC__METADATA_TYPE_VORBIS_COMMENT) return NULL;
+
+  int offset =
+      FLAC__metadata_object_vorbiscomment_find_entry_from(handle, 0, fieldName);
+  if (offset == -1) return NULL;
+
+  const char* target =
+      (char*)handle->data.vorbis_comment.comments[offset].entry;
+  int i = 0;
+  while (1) {
+    if (target[i] == '\0') break;
+    if (target[i] == '=') {
+      i++;
+      break;
+    }
+    i++;
+  }
+  return target + i;
 }
 
 char* __CALLTYPE FLAC_makeInfomationString(EASYFLAC_HANDLE handle) {
-  if (handle == NULL) return "(null)";
+  if (handle == NULL) return NULL;
 
   char* ret = (char*)malloc(INFOMATION_STRING_SIZE);
   int p;
@@ -205,22 +214,25 @@ char* __CALLTYPE FLAC_makeInfomationString(EASYFLAC_HANDLE handle) {
                 handle->bps,
                 handle->total_samples);
 
-  FLAC__StreamMetadata_VorbisComment* comments =
-      FLAC_getVorbisCommentFromHandle(handle);
-  if (comments) {
-    p += sprintf_s(ret + p,
-                   INFOMATION_STRING_SIZE - p,
-                   " --- TAG META DATA ---\n"
-                   "num of comments : %d\n"
-                   "vender : %s\n",
-                   comments->num_comments,
-                   comments->vendor_string.entry);
-    for (unsigned i = 0; i < comments->num_comments; i++) {
+  FLAC__StreamMetadata* metadata = FLAC_getVorbisCommentFromHandle(handle);
+  if (metadata) {
+    FLAC__StreamMetadata_VorbisComment* comments =
+        &metadata->data.vorbis_comment;
+    if (comments) {
       p += sprintf_s(ret + p,
                      INFOMATION_STRING_SIZE - p,
-                     "entry[%02d] %s\n",
-                     i,
-                     (char*)comments->comments[i].entry);
+                     " --- TAG META DATA ---\n"
+                     "num of comments : %d\n"
+                     "vender : %s\n",
+                     comments->num_comments,
+                     comments->vendor_string.entry);
+      for (unsigned i = 0; i < comments->num_comments; i++) {
+        p += sprintf_s(ret + p,
+                       INFOMATION_STRING_SIZE - p,
+                       "entry[%02d] %s\n",
+                       i,
+                       (char*)comments->comments[i].entry);
+      }
     }
   }
   realloc(ret, p + 1);
@@ -229,29 +241,8 @@ char* __CALLTYPE FLAC_makeInfomationString(EASYFLAC_HANDLE handle) {
 
 void __CALLTYPE FLAC_freeInfomationString(char* InfoText) { free(InfoText); }
 
-char* __CALLTYPE FLAC_findComment(EASYFLAC_HANDLE handle, char* fieldName) {
-  if (handle->vorbis_comment == NULL) return NULL;
-
-  int offset = FLAC__metadata_object_vorbiscomment_find_entry_from(
-      handle->vorbis_comment, 0, fieldName);
-  if (offset == -1) return "(none)";
-
-  char* target =
-      (char*)handle->vorbis_comment->data.vorbis_comment.comments[offset].entry;
-  int i = 0;
-  while (1) {
-    if (target[i] == '\0') break;
-    if (target[i] == '=') {
-      i++;
-      break;
-    }
-    i++;
-  }
-  return target + i;
-}
-
 bool __CALLTYPE FLAC_getFileInfo(EASYFLAC_HANDLE handle,
-                                 EASY_FLAC_FILE_INFO* info) {
+                                 EASYFLAC_FILE_INFO* info) {
   if (handle == NULL || info == NULL) return false;
 
   info->sample_rate   = handle->sample_rate;
@@ -260,4 +251,9 @@ bool __CALLTYPE FLAC_getFileInfo(EASYFLAC_HANDLE handle,
   info->sample_size   = handle->sampleSize;
   info->total_samples = handle->total_samples;
   return true;
+}
+
+void __CALLTYPE FLAC_getVersion(const char** version, const char** osal_type_in){
+  *version = "easyFlac " EASYFLAC_VERSION " build: " __TIMESTAMP__;
+  *osal_type_in = osal_type;
 }

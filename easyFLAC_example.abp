@@ -3,40 +3,27 @@
 #console
 #include<RGBALib.sbp>
 
-Declare Function FLAC_openFile Lib "easyFLAC"  (pszPath As BytePtr) As EASY_FLAC_HANDLE
-Declare Sub		 FLAC_close	   Lib "easyFLAC"  (handle As EASY_FLAC_HANDLE)
-Declare Function FLAC_render   Lib "easyFLAC"  (handle As EASY_FLAC_HANDLE,buf AS BytePtr,samples As DWord) As DWORD
+Declare Function FLAC_openFile 		Lib "easyFLAC"  (pszPath As WordPtr) As EASYFLAC_HANDLE
+Declare Sub		 FLAC_close			Lib "easyFLAC"  (handle As EASYFLAC_HANDLE)
+Declare Function FLAC_getFileInfo	Lib "easyFLAC"  (handle As EASYFLAC_HANDLE, info As *EASYFLAC_FILE_INFO) As HANDLE
+Declare Function FLAC_render		Lib "easyFLAC"  (handle As EASYFLAC_HANDLE, buf AS BytePtr, samples As DWord, used_length As *DWord) As Long
 
-Declare Function FLAC_getTags   Lib "easyFLAC"  (pszPath As BytePtr) As HANDLE
-Declare Function FLAC_getVorbisCommentFromTags   Lib "easyFLAC"  (tags AS HANDLE) As *FLAC__StreamMetadata_VorbisComment
-Declare Function FLAC_tag_find_entry Lib "easyFLAC" Alias "FLAC__metadata_object_vorbiscomment_find_entry_from_std" (handle As EASY_FLAC_HANDLE,offset AS DWORD,fieldName As BytePtr) As Long
-Declare Function FLAC_getTagVal   Lib "easyFLAC"  (tags As HANDLE,fieldName AS BytePtr) As BytePtr
-Declare Function FLAC_makeInfomationString Lib "easyFLAC"  (handle As EASY_FLAC_HANDLE,tags AS HANDLE) As BytePtr
-Declare Sub 	 FLAC_deleteTags Lib "easyFLAC"  (tags AS HANDLE) 
+Declare Sub		 FLAC_seek		Lib "easyFLAC"  (handle As EASYFLAC_HANDLE, posSample AS QWord)
+Declare Sub		 FLAC_tell		Lib "easyFLAC"  (handle As EASYFLAC_HANDLE, posSample AS *QWord)
+
+Declare Function FLAC_getVorbisCommentFromHandle   Lib "easyFLAC"  (handle As EASYFLAC_HANDLE) As HANDLE
+Declare Function FLAC_findComment   Lib "easyFLAC"  (tags As HANDLE, pszPath As BytePtr) As HANDLE
+Declare Function FLAC_makeInfomationString Lib "easyFLAC"  (handle As EASYFLAC_HANDLE) As BytePtr
 Declare Sub		 FLAC_freeInfomationString Lib "easyFLAC"  (infoText AS BytePtr)
 
-Type EASY_FLAC
-	filePath 	AS BytePtr
+Type EASYFLAC_FILE_INFO
 	sampleRate 	AS DWord
 	channels 	AS DWord
 	bps 		AS DWord
-	state 		AS FLAC__StreamDecoderState
 	sampleSize 	AS DWord
 	totalSamples AS QWord
-	dummy[3] AS DWord
 End Type
-typedef EASY_FLAC_HANDLE = *EASY_FLAC 
-
-Type FLAC__StreamMetadata_VorbisComment
-	vendor_string AS FLAC__StreamMetadata_VorbisComment_Entry
-	num_comments AS DWORD
-	comments AS *FLAC__StreamMetadata_VorbisComment_Entry
-End Type
-
-Type FLAC__StreamMetadata_VorbisComment_Entry
-	length AS DWord
-	entry AS BytePtr
-End Type
+typedef EASYFLAC_HANDLE = VoidPtr 
 
 Enum FLAC__StreamDecoderState
 	FLAC__STREAM_DECODER_SEARCH_FOR_METADATA = 0
@@ -51,51 +38,68 @@ Enum FLAC__StreamDecoderState
 	FLAC__STREAM_DECODER_UNINITIALIZED
 End Enum
 
-printf(ex"EASY_FLAC_PROTOTYPE - PROGRAMMED BY RGBA_CRT v2017.2.25\n")
-Const FILE="ZIELONY3_1.flac"
+' === Program start ===
+printf(ex"easyFLAC example for ActiveBasic - PROGRAMMED BY RGBA_CRT, v2019.4.24\n")
 
-'METADATA
+' Open File
+Dim handle AS EASYFLAC_HANDLE
+Const FILE=ex"8\0b\0i\0t\0.\0f\0l\0a\0c\0\0\0" ' UTF16-text
+
+handle = FLAC_openFile(FILE)
+if handle = NULL Then	Print "open error":Goto *EFE_EXIT
+ 
+' Get audio file info
+Dim info As EASYFLAC_FILE_INFO
+FLAC_getFileInfo(handle, VarPtr(info))
+
+printf(ex"%dHz , %dbit , %dch\n",
+	info.sampleRate,info.bps,info.channels)
+
+Dim info_text_utf8 AS BytePtr
+Dim info_text AS BytePtr
+info_text_utf8 = FLAC_makeInfomationString(handle)
+info_text = UTF8ToSJIS(info_text_utf8)
+
+printf(ex"------- INFO -----------\n%s\n",info_text)
+
+free(info_text): info_text=NULL
+FLAC_freeInfomationString(info_text_utf8): info_text=NULL
+
+'Get vorbis comment
 Dim tags AS HANDLE
-tags=FLAC_getTags(FILE)
+tags=FLAC_getVorbisCommentFromHandle(handle)
 
-Dim handle AS EASY_FLAC_HANDLE
-handle=FLAC_openFile(FILE)
-if handle=NULL Then	Print "open error":End
-
-printf(ex"%dHz , %dbit , %dch\n------- INFO -----------\n%s\n",handle->sampleRate,handle->bps,handle->channels,_
-	UTF8ToSJIS(FLAC_makeInfomationString(handle,tags)))
-
-printf(ex"title = %s\n\n",FLAC_getTagVal(tags,"TITLE"))
-FLAC_freeInfomationString(FLAC_makeInfomationString(handle,tags))
+Const VorbisComment_Name = "TITLE"
+Dim comment_utf8 AS BytePtr
+comment_utf8 = FLAC_findComment(tags,VorbisComment_Name)
+if comment_utf8 Then
+	Dim comment AS BytePtr
+	comment = UTF8ToSJIS( comment_utf8 )
+	printf(ex"%s = %s\n\n", VorbisComment_Name, comment)
+End If
 
 'DECODE
 Const SAMPLE_SIZE = 40000
 Dim out AS File
-Dim samples AS DWord,buf AS BytePtr
-buf=calloc(SAMPLE_SIZE*handle->sampleSize)
+Dim decoded_samples AS DWord
+Dim buf AS BytePtr
+Dim render_ret As Long
+buf=calloc(SAMPLE_SIZE * info.sampleSize)
 
-Input ">",samples
+Input "[PRESS ENTER]",decoded_samples
 
 out.openFile("out.rwav",GENERIC_WRITE)
 Do
-	samples=FLAC_render(handle,buf,SAMPLE_SIZE)
+	render_ret = FLAC_render(handle,buf,SAMPLE_SIZE, VarPtr(decoded_samples))
+	out.write(buf,decoded_samples * info.sampleSize)
+	if render_ret = FLAC__STREAM_DECODER_END_OF_STREAM Then ExitDo
 	Print ".";
-	out.write(buf,samples*handle->sampleSize)
-	if handle->state = FLAC__STREAM_DECODER_END_OF_STREAM Then ExitDo
 Loop
 out.close()
 FLAC_close(handle)
 
 Print ex"\nDone."
+
+*EFE_EXIT
+Input "[PRESS ENTER]", decoded_samples
 End
-
-
-Function UTF8ToSJIS(utf8Str AS BytePtr) As BytePtr
-	Dim l As Long,uni AS BytePtr
-	l=MultiByteToWideChar(CP_UTF8, 0, utf8Str, -1, NULL, 0)
-	uni=calloc(l*3)
-	UTF8ToSJIS=calloc(l*3)
-	MultiByteToWideChar(CP_UTF8, 0, utf8Str, -1, uni, l)
-	WideCharToMultiByte(CP_ACP,0,uni,-1,UTF8ToSJIS,l*3,0,0)
-	free(uni)
-End Function

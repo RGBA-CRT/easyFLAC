@@ -1,0 +1,12 @@
+Debug/
+Release/
+.vscode/
+ipch/
+
+*.o
+*.dll
+*.vcxproj.*
+*.rwav
+*.exe
+*.7z
+*.suo

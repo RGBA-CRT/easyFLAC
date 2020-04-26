@@ -4,11 +4,15 @@
 #include "FLAC/metadata.h"
 #include "FLAC/stream_decoder.h"
 #include "share/compat.h"
+#include <stdbool.h>
 
-#define __CALLTYPE __stdcall
+extern "C" {
+
+#define __CALLTYPE __declspec(dllexport) __stdcall
 #define INFOMATION_STRING_SIZE 1024 * 10
-#define EASYFLAC_TEXT_ENCODEING_ANSI
-#define EFLAC_WINDOWS
+#define EASYFLAC_VERSION "v1.0"
+// #define EASYFLAC_TEXT_ENCODEING_ANSI
+// #define EFLAC_WINDOWS
 
 typedef struct {
   char* filePath;
@@ -36,23 +40,25 @@ typedef struct {
   uint32_t bps;
   uint32_t sample_size;
   FLAC__uint64 total_samples;
-} EASY_FLAC_FILE_INFO;
+} EASYFLAC_FILE_INFO;
 
 typedef EASY_FLAC* EASYFLAC_HANDLE;
 
 // === audio api ===
 
-//note: FileName's text-encoding is UTF16 on osal_windows.
+// note: FileName's text-encoding is UTF16 on osal_windows.
 //      in osal_posix, text-encoding are depends fopen()'s encoding.
 EASYFLAC_HANDLE __CALLTYPE FLAC_openFile(const char* FileName);
-void __CALLTYPE FLAC_close(EASY_FLAC* handle);
-
+void __CALLTYPE FLAC_close(EASYFLAC_HANDLE handle);
+bool __CALLTYPE FLAC_getFileInfo(EASYFLAC_HANDLE handle,
+                                 EASYFLAC_FILE_INFO* info);
 // render wave from flac
 // [arg] buffer: wave buffer
-// [arg] max_samples: maximum sample count for wave buffer 
+// [arg] max_samples: maximum sample count for wave buffer
 // [arg] used_samples: pointer to number of used samples
 FLAC__StreamDecoderState __CALLTYPE FLAC_render(EASYFLAC_HANDLE handle,
-                                                BYTE* buffer, uint32_t max_samples,
+                                                BYTE* buffer,
+                                                uint32_t max_samples,
                                                 uint32_t* used_samples);
 
 // seek
@@ -61,22 +67,24 @@ void __CALLTYPE FLAC_seek(EASYFLAC_HANDLE handle, uint64_t posSampleNum);
 void __CALLTYPE FLAC_tell(EASYFLAC_HANDLE handle, uint64_t* posSampleNum);
 
 // === metadata api ===
-
-// get StreamMetaData from file.
-// return pointer must release with FLAC_deleteTags.
-FLAC__StreamMetadata* __CALLTYPE FLAC_getTags(const char* fileName);
-void __CALLTYPE FLAC_deleteTags(FLAC__StreamMetadata* tags);
-
-// get VorbisComment from current opening file.
-FLAC__StreamMetadata_VorbisComment* __CALLTYPE
+// get VorbisComment(FLAC__StreamMetadata) from current opening file.
+FLAC__StreamMetadata* __CALLTYPE
 FLAC_getVorbisCommentFromHandle(EASYFLAC_HANDLE handle);
+
+// find specific comment from VorbisComment(FLAC__StreamMetadata).
+// return value points to the inside of FLAC__StreamMetadata.
+// No need to release the return value.
+// text-encodeing is utf-8.
+const char* __CALLTYPE FLAC_findComment(FLAC__StreamMetadata* handle,
+                                        const char* fieldName);
 
 // note: text encoding is utf8
 char* __CALLTYPE FLAC_makeInfomationString(EASYFLAC_HANDLE handle);
 void __CALLTYPE FLAC_freeInfomationString(char* InfoText);
 
-char* __CALLTYPE FLAC_findComment(EASYFLAC_HANDLE handle, char* fieldName);
+void __CALLTYPE FLAC_getVersion(const char** version, const char** osal_type_in);
 
 // ======================
+}
 
 #endif

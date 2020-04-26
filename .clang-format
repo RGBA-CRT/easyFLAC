@@ -1,0 +1,11 @@
+---
+IndentWidth:  2
+AlignConsecutiveAssignments: true
+AlignTrailingComments: true
+AllowShortBlocksOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortIfStatementsOnASingleLine: true
+AlwaysBreakAfterDefinitionReturnType: false
+BinPackArguments: false
+PointerAlignment: Left
+ColumnLimit: 80
