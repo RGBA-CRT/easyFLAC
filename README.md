@@ -1,54 +1,54 @@
 # easyFLAC
-簡易FLACデコーダ(libFLACのWrapper)。コールバックとか作らなくていい。8/16/24bit対応  
-Simple FLAC decoder library - libFLAC Wrapper
++ Wrapper library of libFLAC.
++ とりあえずWindows用のDLLとして作成
 
-## できること
-+ FLACファイルのデコード
-+ シーク
-+ VorbisCommentの取得
- 
- ## 特徴
- + open, render, closeの3つの関数で簡単にデコードできる
- + stdcallなので、C以外の言語でも使える（ActiveBaisc, HSPなど)
- + BSD Licence (libFAAD部分)
- + CC0 Licence (easyFLAC部分)
- 
+## Feature
++ Decode FLAC file
++ Seek
++ Vorbis Comment acquisition
++ Support 8/16/24bit
++ openFile, getFileInfo, render, closeの4関数でデコード可能
++ stdcall Windows DLL
+
 ## デコードのサンプル
 引数のファイルを開いて"out.rwav"という名前で生サウンドデータを出力する例  
 詳しくはeasyFLAC_example.c , easyFLAC_example.7zへ
 ```c
+#include "easyFLAC.h"
 #define TEST_SAMPLE_SIZE 40000
-int _tmain(int argc, _TCHAR* argv[]){
-	EASY_FLAC_HANDLE handle;
 
-	handle=FLAC_openFile((char*)argv[1]);
-	if(handle==NULL){
-		printf("flac open error!\n");
-		return 1;
-	}
+int main(int argc, char* argv[]) {
+  printf("EASYFLAC_PROTOTYPE - PROGRAMMED BY RGBA_CRT rev2 2020.4.24\n");
+  if (argc == 1)
+    return 1;
 
-	fprintf(stderr, "sample rate    : %u Hz\n", handle->sample_rate);
-	fprintf(stderr, "channels       : %u\n", handle->channels);
-	fprintf(stderr, "bits per sample: %u\n", handle->bps);
-	fprintf(stderr, "total samples  : %ld\n", handle->total_samples);
-	fprintf(stderr, "sample bytes   : %ld\n", handle->sampleSize);
+  EASYFLAC_HANDLE handle;
+  handle = FLAC_openFile((char*)argv[1]);
+  if (handle == NULL)
+    return 1;
 
-	BYTE buffer[TEST_SAMPLE_SIZE*6]={0xFF};	//6は24bit * 2chの意
- 	FILE *fout;
-	fopen_s(&fout,"out.rwav","wb");
+  EASYFLAC_FILE_INFO info;
+  FLAC_getFileInfo(handle, &info);
 
-	DWORD samples;
-	while(1){
-		samples=FLAC_render(handle,buffer,TEST_SAMPLE_SIZE);
-		printf(".");
-		fwrite(buffer,samples,handle->sampleSize,fout);
-		if(handle->ok==FLAC__STREAM_DECODER_END_OF_STREAM)  //終了判定はこのようにする
-  		    break;
-	}	
-	
-	FLAC_close(handle);
-	fclose(fout);
-	printf("\ndone.");
+  uint8_t buffer[TEST_SAMPLE_SIZE * 6] = {0xFF};
+  FILE* fout = fopen("out.rwav", "wb");
+  if (!fout) 
+    return -1;
+
+  uint32_t decoded_samples;
+  FLAC__StreamDecoderState render_ret;
+  while (1) {
+    render_ret = FLAC_render(handle, buffer, TEST_SAMPLE_SIZE, &decoded_samples);
+    printf(".");
+    fwrite(buffer, decoded_samples, handle->sampleSize, fout);
+    if (render_ret == FLAC__STREAM_DECODER_END_OF_STREAM) break;
+  }
+
+  FLAC_close(handle);
+  fclose(fout);
+  printf("\ndone.");
+
+  return 0;
 }
 ```
   
