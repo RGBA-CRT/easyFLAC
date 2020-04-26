@@ -11,8 +11,6 @@ extern "C" {
 #define __CALLTYPE __declspec(dllexport) __stdcall
 #define INFOMATION_STRING_SIZE 1024 * 10
 #define EASYFLAC_VERSION "v1.0"
-// #define EASYFLAC_TEXT_ENCODEING_ANSI
-// #define EFLAC_WINDOWS
 
 typedef struct {
   char* filePath;
@@ -26,7 +24,7 @@ typedef struct {
   BOOL resume;
   FLAC__uint64 nowSamples;
   FLAC__uint64 total_samples;
-  BYTE* buffer;
+  uint8_t* buffer;
   FLAC__StreamDecoder* decoder;
   FLAC__StreamDecoderState status; // decodeing state
   FLAC__StreamMetadata* vorbis_comment;
@@ -53,11 +51,11 @@ void __CALLTYPE FLAC_close(EASYFLAC_HANDLE handle);
 bool __CALLTYPE FLAC_getFileInfo(EASYFLAC_HANDLE handle,
                                  EASYFLAC_FILE_INFO* info);
 // render wave from flac
-// [arg] buffer: wave buffer
-// [arg] max_samples: maximum sample count for wave buffer
+// [arg] buffer: sound buffer
+// [arg] max_samples: maximum sample count of sound buffer
 // [arg] used_samples: pointer to number of used samples
 FLAC__StreamDecoderState __CALLTYPE FLAC_render(EASYFLAC_HANDLE handle,
-                                                BYTE* buffer,
+                                                uint8_t* buffer,
                                                 uint32_t max_samples,
                                                 uint32_t* used_samples);
 

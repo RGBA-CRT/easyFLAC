@@ -2,8 +2,8 @@
 
 #include "easyFLAC.h"
 #include "osal.h"
-#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 EASYFLAC_HANDLE __CALLTYPE FLAC_openFile(const char* FileName) {
   // handleì¬
@@ -35,7 +35,7 @@ EASYFLAC_HANDLE __CALLTYPE FLAC_openFile(const char* FileName) {
     return NULL;
   }
 
-  handle->buffer = (BYTE*)malloc(FLAC__MAX_BLOCK_SIZE * handle->sampleSize);
+  handle->buffer = (uint8_t*)malloc(FLAC__MAX_BLOCK_SIZE * handle->sampleSize);
 
   handle->renderPos  = 0;
   handle->nowSamples = 0;
@@ -74,7 +74,7 @@ void __CALLTYPE FLAC_close(EASYFLAC_HANDLE handle) {
 }
 
 FLAC__StreamDecoderState __CALLTYPE FLAC_render(EASYFLAC_HANDLE handle,
-                                                BYTE* buffer,
+                                                uint8_t* buffer,
                                                 uint32_t max_samples,
                                                 uint32_t* used_samples) {
   uint32_t bufPos = 0;
