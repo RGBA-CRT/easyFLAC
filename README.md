@@ -10,9 +10,10 @@
 + openFile, getFileInfo, render, closeの4関数でデコード可能
 + stdcall Windows DLL
 
-## デコードのサンプル
-引数のファイルを開いて"out.rwav"という名前で生サウンドデータを出力する例  
-詳しくはeasyFLAC_example.c , easyFLAC_example.7zへ
+## example
++ filename: [easyFLAC_example.c](easyFLAC_example.c)
++ usage: easyFLAC_example.exe input.flac
++ output: out.rwav
 ```c
 #include "easyFLAC.h"
 #define TEST_SAMPLE_SIZE 40000
